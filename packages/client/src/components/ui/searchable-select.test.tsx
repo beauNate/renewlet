@@ -46,6 +46,36 @@ describe("SearchableSelect", () => {
     expect(onValueChange).toHaveBeenCalledWith("USD");
   });
 
+  it("filters short currency code queries without loose subsequence matches", async () => {
+    const user = userEvent.setup();
+    const currencyOptions: SearchableSelectOption[] = [
+      { value: "HKD", label: "港元 (HK$)", keywords: ["Hong Kong dollar"] },
+      { value: "AFN", label: "阿富汗尼 (AFN)", keywords: ["Afghan Afghani"] },
+      { value: "NGN", label: "尼日利亚奈拉 (NGN)", keywords: ["Nigerian Naira"] },
+      { value: "NIO", label: "尼加拉瓜科多巴 (NIO)", keywords: ["Nicaraguan Córdoba"] },
+    ];
+
+    renderWithTooltipProvider(
+      <SearchableSelect
+        value=""
+        onValueChange={vi.fn()}
+        options={currencyOptions}
+        searchPlaceholder="搜索货币"
+      />,
+    );
+
+    await user.click(screen.getByRole("combobox"));
+    await user.type(screen.getByPlaceholderText("搜索货币"), "ngn");
+
+    const listbox = screen.getByRole("listbox");
+    expect(await within(listbox).findByText("尼日利亚奈拉 (NGN)")).toBeInTheDocument();
+    await waitFor(() => {
+      expect(within(listbox).queryByText("港元 (HK$)")).not.toBeInTheDocument();
+      expect(within(listbox).queryByText("阿富汗尼 (AFN)")).not.toBeInTheDocument();
+      expect(within(listbox).queryByText("尼加拉瓜科多巴 (NIO)")).not.toBeInTheDocument();
+    });
+  });
+
   it("does not select disabled items", async () => {
     const user = userEvent.setup();
     const onValueChange = vi.fn();

@@ -45,7 +45,7 @@ function compactSearchText(input: string): string {
 /**
  * 对候选文本计算搜索匹配分数。
  *
- * 评分保留前缀、包含、多词包含和子序列层级，避免短 query 下排序过于随机。
+ * 评分保留前缀、包含、多词包含；较长 query 才使用子序列兜底，避免短代码误命中。
  */
 export function rankSearchText(values: readonly string[], search: string): number {
   const normalizedSearch = normalizeSearchText(search);
@@ -53,6 +53,7 @@ export function rankSearchText(values: readonly string[], search: string): numbe
 
   const compactSearch = compactSearchText(normalizedSearch);
   const hasCompactSearch = compactSearch.length > 0;
+  const canUseSubsequenceFallback = hasCompactSearch && shouldUseSubsequenceFallback(compactSearch);
   const searchParts = normalizedSearch.split(/\s+/).filter(Boolean);
 
   let best = 0;
@@ -65,10 +66,14 @@ export function rankSearchText(values: readonly string[], search: string): numbe
     else if (value.startsWith(normalizedSearch) || (hasCompactSearch && compactValue.startsWith(compactSearch))) best = Math.max(best, 0.9);
     else if (value.includes(normalizedSearch) || (hasCompactSearch && compactValue.includes(compactSearch))) best = Math.max(best, 0.7);
     else if (searchParts.length > 1 && searchParts.every((part) => value.includes(part))) best = Math.max(best, 0.55);
-    else if (hasCompactSearch && isSubsequence(compactSearch, compactValue)) best = Math.max(best, 0.35);
+    else if (canUseSubsequenceFallback && isSubsequence(compactSearch, compactValue)) best = Math.max(best, 0.35);
   }
 
   return best;
+}
+
+function shouldUseSubsequenceFallback(compactSearch: string): boolean {
+  return compactSearch.length >= 4;
 }
 
 function isSubsequence(needle: string, haystack: string): boolean {

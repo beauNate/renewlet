@@ -143,4 +143,42 @@ describe("ConfigManagerDialog", () => {
     await user.type(search, "zzzz");
     expect(within(dialog).getByText("未找到货币")).toBeInTheDocument();
   });
+
+  it("filters short currency code queries without unrelated subsequence matches", async () => {
+    const user = userEvent.setup();
+
+    render(
+      <TooltipProvider delayDuration={0}>
+        <ConfigManagerDialog
+          title="货币管理"
+          items={[
+            { id: "HKD", value: "HKD", labels: { "zh-CN": "港元 (HK$)", "en-US": "Hong Kong dollar" }, enabled: true },
+            { id: "AFN", value: "AFN", labels: { "zh-CN": "阿富汗尼 (AFN)", "en-US": "Afghan Afghani" }, enabled: true },
+            { id: "NGN", value: "NGN", labels: { "zh-CN": "尼日利亚奈拉 (NGN)", "en-US": "Nigerian Naira" }, enabled: true },
+            { id: "NIO", value: "NIO", labels: { "zh-CN": "尼加拉瓜科多巴 (NIO)", "en-US": "Nicaraguan Córdoba" }, enabled: true },
+          ]}
+          onUpdate={vi.fn()}
+          toggleMode
+          searchable
+          searchPlaceholder="搜索货币、代码或符号..."
+          searchEmptyMessage="未找到货币"
+        />
+      </TooltipProvider>,
+    );
+
+    await user.click(screen.getByRole("button", { name: /货币管理/ }));
+    const dialog = screen.getByRole("dialog", { name: "货币管理" });
+    const search = within(dialog).getByPlaceholderText("搜索货币、代码或符号...");
+
+    await user.type(search, "ngn");
+    expect(within(dialog).getByText("NGN")).toBeInTheDocument();
+    expect(within(dialog).queryByText("HKD")).not.toBeInTheDocument();
+    expect(within(dialog).queryByText("AFN")).not.toBeInTheDocument();
+    expect(within(dialog).queryByText("NIO")).not.toBeInTheDocument();
+
+    await user.clear(search);
+    expect(within(dialog).getByText("HKD")).toBeInTheDocument();
+    expect(within(dialog).getByText("AFN")).toBeInTheDocument();
+    expect(within(dialog).getByText("NIO")).toBeInTheDocument();
+  });
 });
