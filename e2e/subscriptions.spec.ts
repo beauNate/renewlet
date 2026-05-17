@@ -95,6 +95,40 @@ test("setup, login, create subscriptions with empty and tagged tags", async ({ p
   await editDialog.getByRole("button", { name: "取消" }).click();
   await expect(editDialog).toBeHidden();
 
+  const mobileSortTagRow = page.getByTestId("mobile-sort-tag-row");
+  await expect(mobileSortTagRow).toBeVisible();
+  const mobileSortControl = mobileSortTagRow.getByRole("combobox", { name: "排序" });
+  const mobileTagButton = mobileSortTagRow.getByRole("button", { name: "标签" });
+  await expect(page.getByTestId("mobile-selected-tags")).toHaveCount(0);
+  const [mobileSortBox, mobileTagBox] = await Promise.all([
+    getRequiredLocatorBoundingBox(mobileSortControl, "mobile sort filter"),
+    getRequiredLocatorBoundingBox(mobileTagButton, "mobile tag filter"),
+  ]);
+  expect(Math.abs(mobileSortBox.y - mobileTagBox.y), "mobile sort and tag controls should share a row").toBeLessThan(8);
+  expect(mobileTagBox.x, "mobile tag button should sit to the right of sort").toBeGreaterThan(
+    mobileSortBox.x + mobileSortBox.width - 1,
+  );
+  await mobileTagButton.click();
+  const tagDrawer = page.getByRole("dialog", { name: "筛选标签" });
+  await expect(tagDrawer).toBeVisible();
+  await tagDrawer.getByPlaceholder("搜索标签...").fill("云");
+  await tagDrawer.getByRole("button", { name: "云服务" }).click();
+  await tagDrawer.getByRole("button", { name: "确定" }).click();
+  await expect(tagDrawer).toBeHidden();
+  await expect(page.getByTestId("mobile-selected-tags")).toBeVisible();
+  await expect(page.getByText("Tagged Cloud")).toBeVisible();
+  await expect(page.getByText("Aws")).toBeHidden();
+  const mobileTaggedCard = page
+    .getByRole("heading", { name: "Tagged Cloud" })
+    .locator("xpath=ancestor::div[contains(@class, 'group')][1]");
+  await expect(mobileTaggedCard).toBeInViewport();
+  await mobileSortTagRow.getByRole("button", { name: "标签(1)" }).click();
+  await expect(tagDrawer).toBeVisible();
+  await tagDrawer.getByRole("button", { name: "清空标签" }).click();
+  await expect(tagDrawer).toBeHidden();
+  await expect(page.getByTestId("mobile-selected-tags")).toHaveCount(0);
+  await expect(page.getByText("Aws")).toBeVisible();
+
   await page.getByRole("button", { name: "添加订阅" }).click();
   const emptyTagDialog = page.getByRole("dialog", { name: "添加新订阅" });
   await expect(emptyTagDialog).toBeVisible();

@@ -12,7 +12,7 @@
  * - 页面保留视图模式和布局，不承载业务规则。
  */
 
-import { useState } from 'react';
+import { useCallback, useState } from 'react';
 import { Header } from '@/components/header';
 import { SubscriptionCard } from '@/components/subscription-card';
 import { AddSubscriptionDialog } from '@/components/add-subscription-dialog';
@@ -20,7 +20,6 @@ import { EditSubscriptionDialog } from '@/components/edit-subscription-dialog';
 import { SubscriptionListSkeleton } from '@/components/loading-skeleton';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import type { Category, Subscription, SubscriptionStatus } from '@/types/subscription';
 import { Search, Filter, Plus, Grid, List as ListIcon, Download } from 'lucide-react';
@@ -41,6 +40,12 @@ import type { SubscriptionSortOption } from '@/modules/subscriptions/domain/subs
 import { useExchangeRates } from '@/hooks/use-exchange-rates';
 import { useI18n } from '@/i18n/I18nProvider';
 import type { MessageKey } from '@/i18n/messages';
+import { useMediaQuery } from '@/hooks/use-media-query';
+import {
+  SelectedTagScroller,
+  SubscriptionTagFilterDrawer,
+  TagFilterChip,
+} from '@/components/subscription-tag-filter-drawer';
 
 /** 空订阅数组：用于在数据未加载完成时提供稳定引用，避免 useMemo 依赖抖动。 */
 const EMPTY_SUBSCRIPTIONS: Subscription[] = [];
@@ -69,6 +74,7 @@ const Subscriptions = () => {
   const { t, label, locale } = useI18n();
   const { convert } = useExchangeRates(exchangeRateProvider);
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
+  const isMobileTagFilter = useMediaQuery("(max-width: 767px)");
   const {
     editingSubscription,
     editDialogOpen,
@@ -88,6 +94,7 @@ const Subscriptions = () => {
     sortOption,
     setSortOption,
     selectedTags,
+    setSelectedTags,
     allTags,
     filteredSubscriptions,
     hasActiveFilters,
@@ -109,6 +116,9 @@ const Subscriptions = () => {
         ? label(config.statuses.find((status) => status.value === statusFilter)!.labels)
         : statusFilter;
   const sortOptionLabel = t(SORT_OPTION_LABEL_KEYS[sortOption]);
+  const removeSelectedTag = useCallback((tag: string) => {
+    setSelectedTags((current) => current.filter((item) => item !== tag));
+  }, [setSelectedTags]);
 
   // 与参考项目保持一致：首次加载订阅列表时展示骨架屏（筛选条 + 卡片网格占位）。
   if (subscriptionsQuery.isPending) {
@@ -168,99 +178,174 @@ const Subscriptions = () => {
         </div>
 
         {/* Filters */}
-        <div className="mb-6 grid gap-4 rounded-xl border border-border bg-card p-5">
-          <div className="flex flex-wrap items-center gap-4">
-            {/* Search */}
-            <div className="relative flex-1 min-w-[200px]">
-              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-              <Input
-                placeholder={t("subscriptions.searchPlaceholder")}
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="border-border bg-secondary pl-10"
-              />
-            </div>
+        <div className={cn("mb-6 rounded-xl border border-border bg-card p-5", isMobileTagFilter ? "grid gap-3" : "grid gap-4")}>
+          {isMobileTagFilter ? (
+            <>
+              <div className="relative w-full">
+                <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                <Input
+                  placeholder={t("subscriptions.searchPlaceholder")}
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="h-11 border-border bg-secondary pl-10"
+                />
+              </div>
 
-            {/* Category Filter */}
-            <Select value={categoryFilter} onValueChange={(v) => setCategoryFilter(v as Category | 'all')}>
-              <SelectTrigger className="w-[140px] border-border bg-secondary" tooltipContent={categoryFilterLabel}>
-                <SelectValue placeholder={t("subscription.field.category")} />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">{t("subscriptions.allCategories")}</SelectItem>
-                {config.categories.map((category) => (
-                  <SelectItem key={category.id} value={category.value}>
-                    {label(category.labels)}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+              <div className="grid grid-cols-2 gap-3">
+                <Select value={categoryFilter} onValueChange={(v) => setCategoryFilter(v as Category | 'all')}>
+                  <SelectTrigger className="h-11 min-w-0 border-border bg-secondary" tooltipContent={categoryFilterLabel}>
+                    <SelectValue placeholder={t("subscription.field.category")} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">{t("subscriptions.allCategories")}</SelectItem>
+                    {config.categories.map((category) => (
+                      <SelectItem key={category.id} value={category.value}>
+                        {label(category.labels)}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
 
-            {/* Status Filter */}
-            <Select value={statusFilter} onValueChange={(v) => setStatusFilter(v as SubscriptionStatus | 'all')}>
-              <SelectTrigger className="w-[140px] border-border bg-secondary" tooltipContent={statusFilterLabel}>
-                <SelectValue placeholder={t("subscription.field.status")} />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">{t("subscriptions.allStatuses")}</SelectItem>
-                {config.statuses.map((status) => (
-                  <SelectItem key={status.id} value={status.value}>
-                    {label(status.labels)}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+                <Select value={statusFilter} onValueChange={(v) => setStatusFilter(v as SubscriptionStatus | 'all')}>
+                  <SelectTrigger className="h-11 min-w-0 border-border bg-secondary" tooltipContent={statusFilterLabel}>
+                    <SelectValue placeholder={t("subscription.field.status")} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">{t("subscriptions.allStatuses")}</SelectItem>
+                    {config.statuses.map((status) => (
+                      <SelectItem key={status.id} value={status.value}>
+                        {label(status.labels)}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
 
-            {/* Sort */}
-            <Select value={sortOption} onValueChange={(v) => setSortOption(v as SubscriptionSortOption)}>
-              <SelectTrigger
-                aria-label={t("subscriptions.sort.label")}
-                className="w-[190px] border-border bg-secondary"
-                tooltipContent={sortOptionLabel}
-              >
-                <SelectValue placeholder={t("subscriptions.sort.label")} />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="default">{t("subscriptions.sort.default")}</SelectItem>
-                <SelectItem value="renewal_asc">{t("subscriptions.sort.renewalAsc")}</SelectItem>
-                <SelectItem value="renewal_desc">{t("subscriptions.sort.renewalDesc")}</SelectItem>
-                <SelectItem value="monthly_cost_desc">{t("subscriptions.sort.monthlyCostDesc")}</SelectItem>
-                <SelectItem value="monthly_cost_asc">{t("subscriptions.sort.monthlyCostAsc")}</SelectItem>
-                <SelectItem value="price_desc">{t("subscriptions.sort.priceDesc")}</SelectItem>
-                <SelectItem value="price_asc">{t("subscriptions.sort.priceAsc")}</SelectItem>
-                <SelectItem value="name_asc">{t("subscriptions.sort.nameAsc")}</SelectItem>
-                <SelectItem value="name_desc">{t("subscriptions.sort.nameDesc")}</SelectItem>
-              </SelectContent>
-            </Select>
+              <div className="flex min-w-0 items-center gap-3" data-testid="mobile-sort-tag-row">
+                <div className="min-w-0 flex-1">
+                  <Select value={sortOption} onValueChange={(v) => setSortOption(v as SubscriptionSortOption)}>
+                    <SelectTrigger
+                      aria-label={t("subscriptions.sort.label")}
+                      className="h-11 border-border bg-secondary"
+                      tooltipContent={sortOptionLabel}
+                    >
+                      <SelectValue placeholder={t("subscriptions.sort.label")} />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="default">{t("subscriptions.sort.default")}</SelectItem>
+                      <SelectItem value="renewal_asc">{t("subscriptions.sort.renewalAsc")}</SelectItem>
+                      <SelectItem value="renewal_desc">{t("subscriptions.sort.renewalDesc")}</SelectItem>
+                      <SelectItem value="monthly_cost_desc">{t("subscriptions.sort.monthlyCostDesc")}</SelectItem>
+                      <SelectItem value="monthly_cost_asc">{t("subscriptions.sort.monthlyCostAsc")}</SelectItem>
+                      <SelectItem value="price_desc">{t("subscriptions.sort.priceDesc")}</SelectItem>
+                      <SelectItem value="price_asc">{t("subscriptions.sort.priceAsc")}</SelectItem>
+                      <SelectItem value="name_asc">{t("subscriptions.sort.nameAsc")}</SelectItem>
+                      <SelectItem value="name_desc">{t("subscriptions.sort.nameDesc")}</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
 
-            {hasActiveControls && (
-              <Button variant="ghost" size="sm" onClick={clearFilters} className="text-muted-foreground">
-                {t("subscriptions.clearFilters")}
-              </Button>
-            )}
-          </div>
+                {allTags.length > 0 && (
+                  <SubscriptionTagFilterDrawer
+                    tags={allTags}
+                    selectedTags={selectedTags}
+                    onApply={setSelectedTags}
+                  />
+                )}
+              </div>
 
-          {/* Tags */}
-          {allTags.length > 0 && (
-            <div className="flex flex-wrap items-center gap-2">
-              <Filter className="h-4 w-4 text-muted-foreground" />
-              <span className="text-sm text-muted-foreground">{t("subscription.field.tags")}:</span>
-              {allTags.map(tag => (
-                <Badge
-                  key={tag}
-                  variant="outline"
-                  className={cn(
-                    "cursor-pointer transition-colors",
-                    selectedTags.includes(tag)
-                      ? "border-primary bg-primary/10 text-primary"
-                      : "border-border hover:border-primary/50"
-                  )}
-                  onClick={() => toggleTag(tag)}
-                >
-                  {tag}
-                </Badge>
-              ))}
-            </div>
+              <SelectedTagScroller selectedTags={selectedTags} onRemoveTag={removeSelectedTag} />
+
+              {hasActiveControls && (
+                <Button variant="ghost" size="sm" onClick={clearFilters} className="w-fit text-muted-foreground">
+                  {t("subscriptions.clearFilters")}
+                </Button>
+              )}
+            </>
+          ) : (
+            <>
+              <div className="flex flex-wrap items-center gap-4">
+                <div className="relative flex-1 min-w-[200px]">
+                  <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                  <Input
+                    placeholder={t("subscriptions.searchPlaceholder")}
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="border-border bg-secondary pl-10"
+                  />
+                </div>
+
+                <Select value={categoryFilter} onValueChange={(v) => setCategoryFilter(v as Category | 'all')}>
+                  <SelectTrigger className="w-[140px] border-border bg-secondary" tooltipContent={categoryFilterLabel}>
+                    <SelectValue placeholder={t("subscription.field.category")} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">{t("subscriptions.allCategories")}</SelectItem>
+                    {config.categories.map((category) => (
+                      <SelectItem key={category.id} value={category.value}>
+                        {label(category.labels)}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+
+                <Select value={statusFilter} onValueChange={(v) => setStatusFilter(v as SubscriptionStatus | 'all')}>
+                  <SelectTrigger className="w-[140px] border-border bg-secondary" tooltipContent={statusFilterLabel}>
+                    <SelectValue placeholder={t("subscription.field.status")} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">{t("subscriptions.allStatuses")}</SelectItem>
+                    {config.statuses.map((status) => (
+                      <SelectItem key={status.id} value={status.value}>
+                        {label(status.labels)}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+
+                <Select value={sortOption} onValueChange={(v) => setSortOption(v as SubscriptionSortOption)}>
+                  <SelectTrigger
+                    aria-label={t("subscriptions.sort.label")}
+                    className="w-[190px] border-border bg-secondary"
+                    tooltipContent={sortOptionLabel}
+                  >
+                    <SelectValue placeholder={t("subscriptions.sort.label")} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="default">{t("subscriptions.sort.default")}</SelectItem>
+                    <SelectItem value="renewal_asc">{t("subscriptions.sort.renewalAsc")}</SelectItem>
+                    <SelectItem value="renewal_desc">{t("subscriptions.sort.renewalDesc")}</SelectItem>
+                    <SelectItem value="monthly_cost_desc">{t("subscriptions.sort.monthlyCostDesc")}</SelectItem>
+                    <SelectItem value="monthly_cost_asc">{t("subscriptions.sort.monthlyCostAsc")}</SelectItem>
+                    <SelectItem value="price_desc">{t("subscriptions.sort.priceDesc")}</SelectItem>
+                    <SelectItem value="price_asc">{t("subscriptions.sort.priceAsc")}</SelectItem>
+                    <SelectItem value="name_asc">{t("subscriptions.sort.nameAsc")}</SelectItem>
+                    <SelectItem value="name_desc">{t("subscriptions.sort.nameDesc")}</SelectItem>
+                  </SelectContent>
+                </Select>
+
+                {hasActiveControls && (
+                  <Button variant="ghost" size="sm" onClick={clearFilters} className="text-muted-foreground">
+                    {t("subscriptions.clearFilters")}
+                  </Button>
+                )}
+              </div>
+
+              {allTags.length > 0 && (
+                <div className="flex flex-wrap items-center gap-2" data-testid="desktop-tag-filter">
+                  <Filter className="h-4 w-4 text-muted-foreground" />
+                  <span className="text-sm text-muted-foreground">{t("subscription.field.tags")}:</span>
+                  {allTags.map(tag => (
+                    <TagFilterChip
+                      key={tag}
+                      tag={tag}
+                      selected={selectedTags.includes(tag)}
+                      onToggle={() => toggleTag(tag)}
+                    />
+                  ))}
+                </div>
+              )}
+            </>
           )}
         </div>
 

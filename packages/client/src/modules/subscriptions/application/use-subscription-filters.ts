@@ -83,6 +83,7 @@ export function useSubscriptionFilters(
     sortOption,
     setSortOption,
     selectedTags,
+    setSelectedTags,
     allTags,
     filteredSubscriptions: sortedSubscriptions,
     hasActiveFilters,

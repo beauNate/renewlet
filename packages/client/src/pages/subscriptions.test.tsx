@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from "@testing-library/react";
+import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import type { ReactNode } from "react";
 import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
@@ -161,14 +161,32 @@ function visibleSubscriptionNames() {
   return screen.getAllByTestId("subscription-card").map((card) => card.textContent);
 }
 
+function mockMobileTagFilterMatch(isMobile: boolean) {
+  Object.defineProperty(window, "matchMedia", {
+    writable: true,
+    value: vi.fn().mockImplementation((query: string) => ({
+      matches: query === "(max-width: 767px)" ? isMobile : false,
+      media: query,
+      onchange: null,
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn(),
+      addListener: vi.fn(),
+      removeListener: vi.fn(),
+      dispatchEvent: vi.fn(),
+    })),
+  });
+}
+
 describe("Subscriptions page sorting", () => {
   beforeAll(() => {
     Element.prototype.hasPointerCapture ??= vi.fn(() => false);
     Element.prototype.setPointerCapture ??= vi.fn();
     Element.prototype.releasePointerCapture ??= vi.fn();
+    Element.prototype.scrollIntoView ??= vi.fn();
   });
 
   beforeEach(() => {
+    mockMobileTagFilterMatch(false);
     mocks.useSettings.mockReturnValue({
       data: {
         timezone: "Asia/Shanghai",
@@ -205,5 +223,99 @@ describe("Subscriptions page sorting", () => {
       expect(visibleSubscriptionNames()).toEqual(["Annual USD", "Monthly CNY", "Quarterly CNY"]);
     });
     expect(screen.getByRole("combobox", { name: "排序" })).toHaveTextContent("默认顺序");
+  });
+});
+
+describe("Subscriptions page mobile tag filters", () => {
+  beforeAll(() => {
+    Element.prototype.hasPointerCapture ??= vi.fn(() => false);
+    Element.prototype.setPointerCapture ??= vi.fn();
+    Element.prototype.releasePointerCapture ??= vi.fn();
+    Element.prototype.scrollIntoView ??= vi.fn();
+  });
+
+  beforeEach(() => {
+    mockMobileTagFilterMatch(true);
+    mocks.useSettings.mockReturnValue({
+      data: {
+        timezone: "Asia/Shanghai",
+        defaultCurrency: "CNY",
+      },
+    });
+    mocks.useSubscriptions.mockReturnValue({
+      data: [
+        subscription({ id: "cloud", name: "Tagged Cloud", tags: ["工作", "云服务", "Security"] }),
+        subscription({ id: "docs", name: "Docs Notes", tags: ["Docs", "Planning"] }),
+        subscription({ id: "design", name: "Design Suite", tags: ["Design"] }),
+        subscription({ id: "plain", name: "Plain Service", tags: [] }),
+      ],
+      isPending: false,
+    });
+  });
+
+  it("keeps tags compact on mobile and applies drawer selections", async () => {
+    const user = userEvent.setup();
+    renderSubscriptionsPage();
+
+    expect(screen.getByTestId("mobile-tag-filter")).toBeInTheDocument();
+    expect(screen.queryByTestId("desktop-tag-filter")).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Security" })).not.toBeInTheDocument();
+    expect(screen.queryByTestId("mobile-selected-tags")).not.toBeInTheDocument();
+    const sortTagRow = screen.getByTestId("mobile-sort-tag-row");
+    expect(within(sortTagRow).getByRole("combobox", { name: "排序" })).toHaveTextContent("默认顺序");
+    expect(within(sortTagRow).getByRole("button", { name: "标签" })).toBeInTheDocument();
+    expect(visibleSubscriptionNames()).toEqual(["Tagged Cloud", "Docs Notes", "Design Suite", "Plain Service"]);
+
+    await user.click(within(sortTagRow).getByRole("button", { name: "标签" }));
+    const drawer = await screen.findByRole("dialog", { name: "筛选标签" });
+    expect(screen.queryByRole("button", { name: "清空标签" })).not.toBeInTheDocument();
+    await user.type(screen.getByPlaceholderText("搜索标签..."), "Doc");
+    await user.click(screen.getByRole("button", { name: "Docs" }));
+
+    expect(visibleSubscriptionNames()).toEqual(["Tagged Cloud", "Docs Notes", "Design Suite", "Plain Service"]);
+    await user.click(screen.getByRole("button", { name: "确定" }));
+
+    await waitFor(() => {
+      expect(drawer).not.toBeInTheDocument();
+    });
+    expect(screen.getByRole("button", { name: "标签(1)" })).toBeInTheDocument();
+    expect(screen.getByTestId("mobile-selected-tags")).toBeInTheDocument();
+    expect(visibleSubscriptionNames()).toEqual(["Docs Notes"]);
+  });
+
+  it("removes selected mobile tag chips and clears drawer tags immediately", async () => {
+    const user = userEvent.setup();
+    renderSubscriptionsPage();
+
+    await user.click(screen.getByRole("button", { name: "标签" }));
+    await user.click(await screen.findByRole("button", { name: "Docs" }));
+    await user.click(screen.getByRole("button", { name: "确定" }));
+
+    await waitFor(() => {
+      expect(visibleSubscriptionNames()).toEqual(["Docs Notes"]);
+    });
+    await user.click(screen.getByRole("button", { name: "移除标签 Docs" }));
+
+    await waitFor(() => {
+      expect(visibleSubscriptionNames()).toEqual(["Tagged Cloud", "Docs Notes", "Design Suite", "Plain Service"]);
+    });
+    expect(screen.getByRole("button", { name: "标签" })).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "标签" }));
+    await user.click(await screen.findByRole("button", { name: "Design" }));
+    await user.click(screen.getByRole("button", { name: "确定" }));
+
+    await waitFor(() => {
+      expect(visibleSubscriptionNames()).toEqual(["Design Suite"]);
+    });
+    await user.click(screen.getByRole("button", { name: "标签(1)" }));
+    const drawer = await screen.findByRole("dialog", { name: "筛选标签" });
+    await user.click(screen.getByRole("button", { name: "清空标签" }));
+
+    await waitFor(() => {
+      expect(drawer).not.toBeInTheDocument();
+      expect(visibleSubscriptionNames()).toEqual(["Tagged Cloud", "Docs Notes", "Design Suite", "Plain Service"]);
+    });
+    expect(screen.getByRole("button", { name: "标签" })).toBeInTheDocument();
   });
 });
