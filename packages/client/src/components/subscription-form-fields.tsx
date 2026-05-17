@@ -94,6 +94,12 @@ export const SubscriptionFormFields = memo(function SubscriptionFormFields({
 
   const id = (name: string) => `${idPrefix}${name}`;
   const categoryId = id("category");
+  const startDateId = id("startDate");
+  const startDateLabelId = id("startDate-label");
+  const startDateValueId = id("startDate-value");
+  const nextBillingDateId = id("nextBillingDate");
+  const nextBillingDateLabelId = id("nextBillingDate-label");
+  const nextBillingDateValueId = id("nextBillingDate-value");
 
   // 货币选项受“设置 → 货币管理（启用/禁用）”控制：
   // - 默认只展示 enabled=true 的货币
@@ -320,14 +326,17 @@ export const SubscriptionFormFields = memo(function SubscriptionFormFields({
           </div>
         </div>
 
-        <div className="grid gap-4 sm:grid-cols-2">
+        <div className="grid items-start gap-4 sm:grid-cols-2">
           <div className="grid gap-2">
-            <Label>{t("subscription.field.startDate")}</Label>
+            <Label id={startDateLabelId} htmlFor={startDateId}>
+              {t("subscription.field.startDate")}
+            </Label>
             <Popover open={startDatePickerOpen} onOpenChange={setStartDatePickerOpen}>
               <PopoverTrigger asChild>
                 <Button
-                  id={id("startDate")}
+                  id={startDateId}
                   variant="outline"
+                  aria-labelledby={`${startDateLabelId} ${startDateValueId}`}
                   aria-invalid={Boolean(errors.dates)}
                   aria-describedby={errors.dates ? id("dates-error") : undefined}
                   className={cn(
@@ -337,11 +346,9 @@ export const SubscriptionFormFields = memo(function SubscriptionFormFields({
                   )}
                 >
                   <CalendarIcon className="mr-2 h-4 w-4" />
-                  {formData.startDate ? (
-                    formatDateOnly(formData.startDate, "full")
-                  ) : (
-                    <span>{t("subscription.placeholder.date")}</span>
-                  )}
+                  <span id={startDateValueId}>
+                    {formData.startDate ? formatDateOnly(formData.startDate, "full") : t("subscription.placeholder.date")}
+                  </span>
                 </Button>
               </PopoverTrigger>
               <PopoverContent className="w-auto p-0 border-border bg-card" align="start">
@@ -357,13 +364,16 @@ export const SubscriptionFormFields = memo(function SubscriptionFormFields({
           </div>
 
           <div className="grid gap-2">
-            <Label>{t("subscription.field.nextBillingDate")}</Label>
+            <Label id={nextBillingDateLabelId} htmlFor={nextBillingDateId}>
+              {t("subscription.field.nextBillingDate")}
+            </Label>
             <Popover open={nextBillingDatePickerOpen} onOpenChange={setNextBillingDatePickerOpen}>
               <PopoverTrigger asChild>
                 <Button
-                  id={id("nextBillingDate")}
+                  id={nextBillingDateId}
                   variant="outline"
                   disabled={formData.autoCalculate}
+                  aria-labelledby={`${nextBillingDateLabelId} ${nextBillingDateValueId}`}
                   aria-invalid={Boolean(errors.dates)}
                   aria-describedby={errors.dates ? id("dates-error") : undefined}
                   className={cn(
@@ -374,11 +384,11 @@ export const SubscriptionFormFields = memo(function SubscriptionFormFields({
                   )}
                 >
                   <CalendarIcon className="mr-2 h-4 w-4" />
-                  {formData.nextBillingDate ? (
-                    formatDateOnly(formData.nextBillingDate, "full")
-                  ) : (
-                    <span>{t("subscription.placeholder.date")}</span>
-                  )}
+                  <span id={nextBillingDateValueId}>
+                    {formData.nextBillingDate
+                      ? formatDateOnly(formData.nextBillingDate, "full")
+                      : t("subscription.placeholder.date")}
+                  </span>
                 </Button>
               </PopoverTrigger>
               <PopoverContent className="w-auto p-0 border-border bg-card" align="start">

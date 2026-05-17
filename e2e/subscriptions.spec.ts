@@ -300,6 +300,8 @@ async function fillSubscriptionDialog(
   await expect(dialog).toBeVisible();
   await expectLabelControlGap(dialog.getByLabel("服务名称", { exact: true }), "subscription name");
   await expectLabelControlGap(dialog.getByLabel("价格", { exact: true }), "subscription price");
+  await expectLabelControlGap(dialog.getByLabel("开始日期", { exact: true }), "subscription start date");
+  await expectLabelControlGap(dialog.getByLabel("到期日期", { exact: true }), "subscription next billing date");
   await expectLabelControlGap(dialog.getByLabel("标签", { exact: true }), "subscription tags");
   await dialog.getByLabel("服务名称").fill(values.name);
   await dialog.getByLabel("价格").fill(values.price);
