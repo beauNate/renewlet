@@ -136,11 +136,17 @@ async function installUploadedLogoAssetsRoute(page: Page) {
   };
 }
 
-async function tapMobileSheetBackdrop(page: Page) {
+async function tapMobileSheetBackdrop(page: Page, absolutePosition?: { x: number; y: number }) {
   const backdrop = page.locator("[data-mobile-overlay-backdrop]").last();
   await expect(backdrop).toBeVisible();
   await expect(page.locator("body")).toHaveAttribute("data-mobile-overlay-open", "");
-  await backdrop.click({ position: { x: 12, y: 12 } });
+  if (absolutePosition) {
+    await page.touchscreen.tap(absolutePosition.x, absolutePosition.y);
+    return;
+  }
+
+  const backdropBox = await getRequiredLocatorBoundingBox(backdrop, "mobile sheet backdrop");
+  await page.touchscreen.tap(backdropBox.x + 12, backdropBox.y + 12);
 }
 
 test.describe("public H5 chrome", () => {
@@ -397,16 +403,30 @@ test("mobile option sheets use consistent detents and do not leak backdrop event
   await page.keyboard.press("Escape");
   await expect(categorySheet).toBeHidden();
 
+  await page.setViewportSize({ width: 390, height: 740 });
   const dialog = await openAddSubscriptionDialog(page);
+  const currencyTrigger = dialog.getByRole("combobox", { name: "选择货币" });
+  await currencyTrigger.scrollIntoViewIfNeeded();
   const statusTrigger = dialog.getByRole("combobox").filter({ hasText: "活跃" });
   await statusTrigger.scrollIntoViewIfNeeded();
+  const currencyBox = await getRequiredLocatorBoundingBox(currencyTrigger, "currency trigger under status backdrop");
+  const currencyTapPoint = {
+    x: currencyBox.x + currencyBox.width / 2,
+    y: currencyBox.y + currencyBox.height / 2,
+  };
   await statusTrigger.click();
   const statusSheet = page.locator(".h5-mobile-sheet-content").filter({ hasText: "活跃" }).last();
   await expect(statusSheet).toBeVisible();
-  await tapMobileSheetBackdrop(page);
+  const statusSheetBox = await getRequiredLocatorBoundingBox(statusSheet, "status sheet");
+  expect(
+    currencyTapPoint.y,
+    "currency trigger coordinate must hit the backdrop, not the visible status sheet",
+  ).toBeLessThan(statusSheetBox.y);
+  await tapMobileSheetBackdrop(page, currencyTapPoint);
   await expect(statusSheet).toBeHidden();
   await expect(dialog).toBeVisible();
   await expect(page.locator(".h5-mobile-sheet-content")).toHaveCount(0);
+  await expect(page.getByTestId("searchable-select-sheet")).toHaveCount(0);
 
   const paymentTrigger = dialog.getByRole("combobox").filter({ hasText: "选择支付方式" });
   await paymentTrigger.scrollIntoViewIfNeeded();
