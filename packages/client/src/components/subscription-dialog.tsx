@@ -304,8 +304,11 @@ export function SubscriptionDialog(props: SubscriptionDialogProps) {
     <Dialog open={props.open} onOpenChange={props.onOpenChange}>
       {"trigger" in props && props.trigger ? <DialogTrigger asChild>{props.trigger}</DialogTrigger> : null}
 
-      <DialogContent className="h5-subscription-dialog-panel min-h-0 border-border bg-card p-0 sm:max-w-lg">
-        <DialogHeader className="shrink-0 p-6 pb-0">
+      <DialogContent
+        layout="frame"
+        className="h5-dialog-frame h5-subscription-dialog-panel border-border bg-card p-0 sm:max-w-lg"
+      >
+        <DialogHeader data-subscription-dialog-header="" className="shrink-0 p-6 pb-0">
           <DialogTitle className="text-xl font-semibold">
             {props.mode === "create" ? t("subscription.dialogCreateTitle") : t("subscription.dialogEditTitle")}
           </DialogTitle>

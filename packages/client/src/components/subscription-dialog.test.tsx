@@ -105,9 +105,14 @@ describe("SubscriptionDialog", () => {
     );
 
     const form = document.querySelector("form");
+    const dialog = screen.getByRole("dialog", { name: "添加新订阅" });
+    const header = document.querySelector("[data-subscription-dialog-header]");
     const scrollRegion = form?.firstElementChild;
     const footer = screen.getByRole("button", { name: "添加订阅" }).closest("div");
 
+    expect(dialog).toHaveClass("h5-dialog-frame", "h5-subscription-dialog-panel");
+    expect(dialog).not.toHaveClass("h-fit");
+    expect(header).toHaveClass("shrink-0");
     expect(form).toHaveClass("h5-subscription-dialog-form");
     expect(scrollRegion).toHaveClass("h5-mobile-sheet-scroll", "h5-subscription-dialog-scroll", "py-4");
     expect(scrollRegion?.className).not.toContain("--subscription-dialog-footer-space");

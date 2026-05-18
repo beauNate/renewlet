@@ -34,11 +34,20 @@
     max-height: calc(var(--app-viewport-height) - 2rem - env(safe-area-inset-top) - env(safe-area-inset-bottom));
   }
 
+  .h5-dialog-frame {
+    top: calc(var(--app-visual-viewport-offset-top) + 1rem + env(safe-area-inset-top));
+    bottom: auto;
+    height: min(90vh, calc(var(--app-viewport-height) - 2rem - env(safe-area-inset-top) - env(safe-area-inset-bottom)));
+    max-height: calc(var(--app-viewport-height) - 2rem - env(safe-area-inset-top) - env(safe-area-inset-bottom));
+    min-height: 0;
+    margin-top: 0;
+    margin-bottom: 0;
+  }
+
   .h5-subscription-dialog-panel {
     display: grid;
     gap: 0;
     grid-template-rows: auto minmax(0, 1fr);
-    max-height: 90vh;
   }
 
   .h5-subscription-dialog-form {
@@ -49,6 +58,11 @@
 
   .h5-subscription-dialog-scroll {
     min-height: 0;
+  }
+
+  .h5-config-manager-dialog-panel {
+    display: grid;
+    grid-template-rows: auto auto minmax(0, 1fr) auto;
   }
 
   .h5-floating-content {
@@ -108,11 +122,6 @@
   }
 
   @media (max-width: 767px) {
-    .h5-dialog-panel.h5-subscription-dialog-panel {
-      height: calc(var(--app-viewport-height) - 2rem - env(safe-area-inset-top) - env(safe-area-inset-bottom)) !important;
-      max-height: calc(var(--app-viewport-height) - 2rem - env(safe-area-inset-top) - env(safe-area-inset-bottom));
-    }
-
     .h5-mobile-overlay-backdrop {
       position: fixed;
       inset: 0;
@@ -150,10 +159,18 @@
       border-bottom-width: 0;
       border-left-width: 1px;
       box-shadow: 0 -18px 48px -24px hsl(0 0% 0% / 0.72);
-      translate: none !important;
+      translate:
+        0
+        calc(var(--app-visual-viewport-offset-top) + var(--app-viewport-height) - var(--app-layout-viewport-height)) !important;
       transform: none !important;
       transform-origin: bottom center !important;
       animation: h5-mobile-sheet-in 180ms ease-out !important;
+    }
+
+    .h5-drawer-panel {
+      translate:
+        0
+        calc(var(--app-visual-viewport-offset-top) + var(--app-viewport-height) - var(--app-layout-viewport-height));
     }
 
     .h5-mobile-sheet-compact {
