@@ -8,7 +8,11 @@ import {
   subscriptionCard,
   uniqueE2EName,
 } from "./support/subscriptions";
-import { expectActionNearContainerBottom, expectScrollContentNearFooter } from "./support/layout";
+import {
+  expectActionNearContainerBottom,
+  expectScrollContentNearFooter,
+  expectVerticallyCenteredInViewport,
+} from "./support/layout";
 
 test("desktop tall subscription dialog keeps footer tight to the panel bottom", async ({ page }) => {
   await page.setViewportSize({ width: 1024, height: 900 });
@@ -16,6 +20,7 @@ test("desktop tall subscription dialog keeps footer tight to the panel bottom", 
   await expect(page.getByRole("heading", { name: "订阅列表" })).toBeVisible();
 
   const dialog = await openAddSubscriptionDialog(page);
+  await expectVerticallyCenteredInViewport(page, dialog, "desktop tall subscription dialog");
   await expectActionNearContainerBottom(
     dialog,
     dialog.getByRole("button", { name: "添加订阅" }),
@@ -61,6 +66,7 @@ test("desktop subscription create, tag filter, edit, and reload persistence", as
   await expect(subscriptionCard(page, plainName)).toBeVisible();
 
   const editDialog = await openSubscriptionEditDialog(page, taggedName);
+  await expectVerticallyCenteredInViewport(page, editDialog, "desktop edit subscription dialog");
   await editDialog.getByLabel("服务名称", { exact: true }).fill(editedName);
   const desktopTagInput = editDialog.getByLabel("标签", { exact: true });
   await desktopTagInput.fill("Writing、test、Docs、Research");

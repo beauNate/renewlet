@@ -35,13 +35,9 @@
   }
 
   .h5-dialog-frame {
-    top: calc(var(--app-visual-viewport-offset-top) + 1rem + env(safe-area-inset-top));
-    bottom: auto;
     height: min(90vh, calc(var(--app-viewport-height) - 2rem - env(safe-area-inset-top) - env(safe-area-inset-bottom)));
     max-height: calc(var(--app-viewport-height) - 2rem - env(safe-area-inset-top) - env(safe-area-inset-bottom));
     min-height: 0;
-    margin-top: 0;
-    margin-bottom: 0;
   }
 
   .h5-subscription-dialog-panel {
@@ -122,6 +118,13 @@
   }
 
   @media (max-width: 767px) {
+    .h5-dialog-frame {
+      top: calc(var(--app-visual-viewport-offset-top) + 1rem + env(safe-area-inset-top));
+      bottom: auto;
+      margin-top: 0;
+      margin-bottom: 0;
+    }
+
     .h5-mobile-overlay-backdrop {
       position: fixed;
       inset: 0;

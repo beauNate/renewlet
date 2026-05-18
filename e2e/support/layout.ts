@@ -147,6 +147,22 @@ export async function expectActionNearContainerBottom(
   expect(gap, `${label}: action-to-bottom gap`).toBeLessThanOrEqual(maxGap);
 }
 
+export async function expectVerticallyCenteredInViewport(
+  page: Page,
+  locator: Locator,
+  label: string,
+  maxOffset = 4,
+) {
+  await expect.poll(async () => {
+    const box = await getRequiredLocatorBoundingBox(locator, label);
+    const viewport = page.viewportSize();
+    if (!viewport) {
+      throw new Error("Missing viewport size");
+    }
+    return Math.abs((box.y + box.height / 2) - viewport.height / 2);
+  }, { message: `${label}: vertical center offset` }).toBeLessThanOrEqual(maxOffset);
+}
+
 export async function expectScrollContentNearFooter(
   scrollRegion: Locator,
   label: string,
