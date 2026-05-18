@@ -136,3 +136,73 @@ test("calendar H5 agenda items stay inside the card container", async ({ page },
     expect(item.width, `calendar agenda item ${index}: width inside list`).toBeLessThanOrEqual(metrics.listWidth + 1);
   }
 });
+
+test("calendar H5 day drawer items stay inside the drawer container", async ({ page }, testInfo) => {
+  await page.setViewportSize({ width: 390, height: 720 });
+  await page.goto("/");
+  const dates = await getCurrentMonthCalendarDates(page);
+  const billingDay = Number(dates.nextBillingDate.slice(-2));
+  const longName = uniqueE2EName(testInfo, "CloudflareZeroTrustPayAsYouGoPlatformWithAnExtraLongPlanName");
+
+  await createCalendarSubscriptionRecord(page, {
+    name: longName,
+    price: 999_999_999.99,
+    currency: "USD",
+    ...dates,
+  });
+  await createCalendarSubscriptionRecord(page, {
+    name: uniqueE2EName(testInfo, "CalendarDayDrawerNormal"),
+    price: 16,
+    currency: "USD",
+    ...dates,
+  });
+
+  await page.goto("/calendar");
+  await page.getByRole("button", { name: new RegExp(`${billingDay}日 2 个续费`) }).click();
+
+  const list = page.getByTestId("calendar-day-subscription-list");
+  await expect(list).toBeVisible();
+  await expect(page.getByText(longName)).toBeVisible();
+  await expectNoHorizontalOverflow(page, "mobile calendar day drawer");
+
+  const metrics = await list.evaluate((element) => {
+    const items = Array.from(element.querySelectorAll<HTMLElement>('[data-testid="calendar-day-subscription-item"]'));
+    if (items.length === 0) {
+      throw new Error("Missing mobile calendar day drawer items");
+    }
+
+    const listRect = element.getBoundingClientRect();
+    const drawerRect = element.closest<HTMLElement>("[data-vaul-drawer]")?.getBoundingClientRect();
+    if (!drawerRect) {
+      throw new Error("Missing mobile calendar day drawer container");
+    }
+
+    return {
+      listWidth: Math.round(listRect.width),
+      drawerWidth: Math.round(drawerRect.width),
+      items: items.map((item) => {
+        const itemRect = item.getBoundingClientRect();
+        return {
+          leftInset: Math.round((itemRect.left - listRect.left) * 100) / 100,
+          rightOverflow: Math.round((itemRect.right - listRect.right) * 100) / 100,
+          drawerRightOverflow: Math.round((itemRect.right - drawerRect.right) * 100) / 100,
+          width: Math.round(itemRect.width * 100) / 100,
+        };
+      }),
+    };
+  });
+
+  expect(metrics.listWidth, "calendar day drawer list should use the drawer width").toBeLessThanOrEqual(
+    metrics.drawerWidth + 1,
+  );
+  for (const [index, item] of metrics.items.entries()) {
+    expect(item.leftInset, `calendar day drawer item ${index}: left edge`).toBeGreaterThanOrEqual(-1);
+    expect(item.rightOverflow, `calendar day drawer item ${index}: right edge inside list`).toBeLessThanOrEqual(1);
+    expect(item.drawerRightOverflow, `calendar day drawer item ${index}: right edge inside drawer`).toBeLessThanOrEqual(
+      1,
+    );
+    expect(item.width, `calendar day drawer item ${index}: width inside list`).toBeLessThanOrEqual(
+      metrics.listWidth + 1,
+    );
+  }
+});

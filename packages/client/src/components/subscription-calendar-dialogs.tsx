@@ -244,7 +244,7 @@ function DaySubscriptionsList({ subscriptions, onSelectSubscription, today }: Da
   const { label, formatCurrency } = useI18n();
 
   return (
-    <div className="grid gap-2">
+    <div className="grid min-w-0 max-w-full grid-cols-1 gap-2" data-testid="calendar-day-subscription-list">
       {subscriptions.map((sub) => {
         // 当天列表和详情弹窗保持同一口径，确保旧过期数据不会在同一个日历流程里显示成不同状态。
         const effectiveStatus = getEffectiveSubscriptionStatus(sub, today);
@@ -254,7 +254,8 @@ function DaySubscriptionsList({ subscriptions, onSelectSubscription, today }: Da
             key={sub.id}
             type="button"
             onClick={() => onSelectSubscription(sub)}
-            className="group flex w-full items-center gap-3 rounded-lg border border-border bg-secondary/30 p-3 text-left transition-colors hover:bg-secondary/60"
+            className="group flex min-w-0 w-full max-w-full items-center gap-3 rounded-lg border border-border bg-secondary/30 p-3 text-left transition-colors hover:bg-secondary/60"
+            data-testid="calendar-day-subscription-item"
           >
             <CalendarSubscriptionLogo
               subscription={sub}
@@ -269,13 +270,13 @@ function DaySubscriptionsList({ subscriptions, onSelectSubscription, today }: Da
                 {label(CYCLE_LABELS[sub.billingCycle])}
               </p>
             </div>
-            <div className="text-right">
-              <p className="font-semibold text-foreground">
+            <div className="min-w-0 max-w-[42%] shrink-0 text-right">
+              <p className="truncate font-semibold text-foreground">
                 {formatCurrency(sub.price, sub.currency)}
               </p>
               <Badge
                 variant="outline"
-                className={cn("text-xs", statusBadgeClassNames[effectiveStatus])}
+                className={cn("max-w-full truncate text-xs", statusBadgeClassNames[effectiveStatus])}
               >
                 {label(STATUS_LABELS[effectiveStatus])}
               </Badge>
