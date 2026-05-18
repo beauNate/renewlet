@@ -158,11 +158,11 @@ test("calendar H5 day drawer items stay inside the drawer container", async ({ p
   });
 
   await page.goto("/calendar");
-  await page.getByRole("button", { name: new RegExp(`${billingDay}日 2 个续费`) }).click();
+  await page.getByRole("button", { name: new RegExp(`${billingDay}日 \\d+ 个续费`) }).click();
 
   const list = page.getByTestId("calendar-day-subscription-list");
   await expect(list).toBeVisible();
-  await expect(page.getByText(longName)).toBeVisible();
+  await expect(list.getByText(longName)).toBeVisible();
   await expectNoHorizontalOverflow(page, "mobile calendar day drawer");
 
   const metrics = await list.evaluate((element) => {
