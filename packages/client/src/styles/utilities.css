@@ -193,6 +193,10 @@
       -webkit-overflow-scrolling: touch;
     }
 
+    .h5-mobile-select-scroll-button {
+      display: none !important;
+    }
+
     .h5-mobile-sheet-compact .h5-mobile-select-viewport,
     .h5-mobile-sheet-compact.h5-mobile-menu-content,
     .h5-mobile-sheet-compact .h5-mobile-searchable-select-command {

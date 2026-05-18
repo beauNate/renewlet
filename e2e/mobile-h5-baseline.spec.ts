@@ -76,6 +76,59 @@ async function captureSearchableSheetListMetrics(sheet: Locator, optionLabel: st
   }, optionLabel);
 }
 
+async function captureMobileSelectSheetMetrics(sheet: Locator, locatorLabel: string) {
+  return sheet.evaluate((element, label) => {
+    const viewport = element.querySelector<HTMLElement>(".h5-mobile-select-viewport");
+    if (!viewport) {
+      throw new Error(`Missing mobile select viewport: ${label}`);
+    }
+
+    const scrollButtons = Array.from(element.querySelectorAll<HTMLElement>(".h5-mobile-select-scroll-button"));
+    const sheetRect = element.getBoundingClientRect();
+    const viewportRect = viewport.getBoundingClientRect();
+
+    return {
+      sheetHeight: Math.round(sheetRect.height),
+      viewportHeight: Math.round(viewportRect.height),
+      scrollTop: Math.round(viewport.scrollTop),
+      scrollHeight: Math.round(viewport.scrollHeight),
+      clientHeight: Math.round(viewport.clientHeight),
+      scrollButtonDisplays: scrollButtons.map((button) => window.getComputedStyle(button).display),
+    };
+  }, locatorLabel);
+}
+
+async function expectMobileSelectSheetStableWhileScrolling(sheet: Locator, locatorLabel: string) {
+  const scrollButtons = sheet.locator(".h5-mobile-select-scroll-button");
+  const scrollButtonCount = await scrollButtons.count();
+  expect(scrollButtonCount, `${locatorLabel}: Radix mounted at least one scroll affordance`).toBeGreaterThan(0);
+  for (let index = 0; index < scrollButtonCount; index += 1) {
+    await expect(scrollButtons.nth(index), `${locatorLabel}: mobile scroll button ${index} display`).toHaveCSS(
+      "display",
+      "none",
+    );
+  }
+
+  const before = await captureMobileSelectSheetMetrics(sheet, locatorLabel);
+  expect(before.scrollHeight, `${locatorLabel}: viewport must be internally scrollable`).toBeGreaterThan(before.clientHeight);
+
+  await sheet.locator(".h5-mobile-select-viewport").evaluate((element) => {
+    element.scrollTop = element.scrollHeight;
+    element.dispatchEvent(new Event("scroll", { bubbles: true }));
+  });
+
+  await expect
+    .poll(async () => (await captureMobileSelectSheetMetrics(sheet, locatorLabel)).scrollTop)
+    .toBeGreaterThan(0);
+  const after = await captureMobileSelectSheetMetrics(sheet, locatorLabel);
+
+  expect(Math.abs(after.sheetHeight - before.sheetHeight), `${locatorLabel}: sheet height after scroll`).toBeLessThanOrEqual(1);
+  expect(Math.abs(after.viewportHeight - before.viewportHeight), `${locatorLabel}: viewport height after scroll`).toBeLessThanOrEqual(1);
+  expect(after.scrollButtonDisplays, `${locatorLabel}: mobile scroll buttons must not affect layout`).toEqual(
+    Array.from({ length: after.scrollButtonDisplays.length }, () => "none"),
+  );
+}
+
 type UploadedLogoRouteRecord = {
   id: string;
   kind: "logo";
@@ -400,6 +453,7 @@ test("mobile option sheets use consistent detents and do not leak backdrop event
   await expectOverlayLeavesTopScrim(page, categorySheet, "category large sheet");
   await expectLocatorInsideViewport(page, categorySheet, "category large sheet");
   await expectNoHorizontalOverflow(page, "category large sheet");
+  await expectMobileSelectSheetStableWhileScrolling(categorySheet, "category large sheet");
   await page.keyboard.press("Escape");
   await expect(categorySheet).toBeHidden();
 
