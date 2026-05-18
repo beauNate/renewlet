@@ -70,6 +70,10 @@
     max-height: min(85dvh, calc(var(--app-viewport-height) - 3rem - env(safe-area-inset-top)));
   }
 
+  .h5-notification-history-detail-drawer {
+    max-height: min(78dvh, calc(var(--app-viewport-height) - 4rem - env(safe-area-inset-top)));
+  }
+
   .h5-bottom-bar {
     padding:
       1rem calc(1rem + env(safe-area-inset-right))
